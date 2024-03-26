@@ -32,10 +32,6 @@ import jakarta.ws.rs.ext.Provider;
 public class OrderEntityResource {
 
     private static final Logger LOGGER = Logger.getLogger(OrderEntityResource.class.getName());
-
-    @Inject
-    @Channel("order-placed")
-    private Emitter<OrderEntity> orderPlacedEmitter;
     
     @GET
     public List<OrderEntity> get() {
@@ -62,8 +58,6 @@ public class OrderEntityResource {
         doCreate(order);
 
         LOGGER.info("Order persisted: " + order.id);
-        
-        //orderPlacedEmitter.send(order);
 
         LOGGER.info("Order placed: " + order.id);
         
