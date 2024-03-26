@@ -5,9 +5,9 @@ resources:
 - db-credentials.yaml
 
 images:
-- name: default-container
+- name: quarkus-container-image
   newName: image-registry.openshift-image-registry.svc:5000/develop/order-service
-  newTag: latest
+  newTag: dev
 
 
 
