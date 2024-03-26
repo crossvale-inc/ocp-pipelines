@@ -1,0 +1,19 @@
+kind: Kustomization
+
+commonLabels:
+  app: order-service
+
+resources:
+- ../../../base-quarkus
+- database-deployment.yaml
+- database-service.yaml
+
+patches:
+- path: patch_deployment.yaml
+  target:
+    kind: Deployment
+    name: quarkus-service
+- path: patch_service.yaml
+  target:
+    kind: Service
+    name: quarkus-service
