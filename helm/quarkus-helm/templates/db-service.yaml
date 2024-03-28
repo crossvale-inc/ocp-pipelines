@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.db.service.name }}
+  labels:
+    {{- include "quarkus-helm.db.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.db.service.type }}
+  ports:
+    - port: {{ .Values.db.service.port }}
+      protocol: TCP
+  selector:
+    {{- include "quarkus-helm.db.selectorLabels" . | nindent 4 }}
