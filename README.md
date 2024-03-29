@@ -1,3 +1,9 @@
+<style>
+.code-block {
+    background-color: grey
+  }
+</style>
+
 # XV OCP Pipelines Workshop
 
 The purpose of this workshop is to provide an overview on how to build, deploy and monitor applications running in an Openshift cluster.
@@ -23,7 +29,23 @@ The purpose of this Lab is to prepare the Openshift cluster for the exercises.
 
 # Lab 1
 
-UserName <input type="text" id="name" name="name"/>
+Set input:
 
-<h1>{props.pageContext.name}</h1>
-  
+UserName <input type="text" id="name" name="name" onChange="window.location.reload()"/>
+
+<script>
+  var username= document.getElementById("name").value
+
+  if (username == "") {
+    username = "user"
+  }
+
+  var devNamespace = username + "_development"
+
+</script>
+
+Create your develop and test projects:
+
+<div class="highlight"><pre>oc create project <script>document.write(devNamespace)</script></pre>
+</div>
+
