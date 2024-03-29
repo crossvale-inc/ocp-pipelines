@@ -59,7 +59,7 @@ spec:
               
               echo "Applying helm patch"
 
-              oc patch application $ARGO_APP -p '{"operation": {"initiatedBy": {"username": "pipeline"},"sync": {"syncStrategy": null}},"spec":{ "source": {"helm": {"parameters": [{"name": "image.sha","value": "'$IMAGE_SHA'"}]}}}}' -n openshift-gitops --type=merge
+              oc patch application $ARGO_APP -p '{"spec":{ "source": {"helm": {"parameters": [{"name": "image.sha","value": "'$IMAGE_SHA'"}]}}}}' -n openshift-gitops --type=merge
 
             elif [[ $IS_KUSTOMIZE -eq 0 ]]; then
               
