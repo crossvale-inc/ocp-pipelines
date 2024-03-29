@@ -1,6 +1,9 @@
 - op: replace
   path: /metadata/name
   value: order-service-kustomize
+- op: add
+  path: /metadata/labels/deployment
+  value: quarkus-service 
 - op: replace
   path: /spec/selector/app
   value: order-service-kustomize
