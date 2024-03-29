@@ -31,14 +31,6 @@
     color: #751515;
   }
 
-  .markdown-body h1 {
-    border-bottom: 1px solid #751515;
-  }
-
-  .markdown-body h2 {
-    border-bottom: 1px solid #751515;
-  }
-
   .sticky {
     position: fixed;
     top: 0;
@@ -101,6 +93,11 @@ The purpose of this Lab is to prepare the Openshift cluster for the exercises.
 
 ## Lab 0.1 Install Openshift Pipelines Operator
 
+Install the pipelines operator from the OperatorHub:
+
+* Name: 
+* Version:
+
 ## Lab 0.2 Install Openshift GitOps Operator
 
 ## Lab 0.3 Install Grafana Operator
@@ -127,6 +124,7 @@ UserName: <input type="text" id="username" name="name" />
   }
 
   var devNamespace = username + "_development"
+  var testNamespace = username + "_test"
 
   // When the user scrolls the page, execute myFunction
   window.onscroll = function() {myFunction()};
@@ -152,8 +150,15 @@ Clone the repository in your workspace:
 <div class="highlight"><pre>git clone <script>document.write(gitRepo)</script></pre>
 </div>
 
-Create your develop and test projects:
+Create the develop project:
 
 <div class="highlight"><pre>oc create project <script>document.write(devNamespace)</script></pre>
 </div>
 
+Create the test project:
+
+<div class="highlight"><pre>oc create project <script>document.write(testNamespace)</script></pre>
+</div>
+
+
+![GrafanaAlertResponse](images/grafana-alert-response-time.png)
