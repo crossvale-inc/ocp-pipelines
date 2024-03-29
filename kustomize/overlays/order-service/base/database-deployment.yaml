@@ -4,15 +4,6 @@ metadata:
   name: orders
 spec:
   replicas: 1
-  revisionHistoryLimit: 10
-  selector:
-    name: orders
-  strategy:
-    activeDeadlineSeconds: 21600
-    recreateParams:
-      timeoutSeconds: 600
-    resources: {}
-    type: Recreate
   template:
     metadata:
       creationTimestamp: null
