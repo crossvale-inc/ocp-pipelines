@@ -4,4 +4,7 @@
 - op: replace
   path: /spec/selector/app
   value: order-service-kustomize
+- op: replace
+  path: /spec/selector/deployment
+  value: quarkus-service 
 
