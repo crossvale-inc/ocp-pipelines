@@ -1,0 +1,100 @@
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaFolder
+metadata:
+  name: workshop
+spec:
+  instanceSelector:
+    matchLabels:
+      dashboards: grafana-workshop
+---
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaAlertRuleGroup
+metadata:
+  name: grafana-alert
+  namespace: workshop
+spec: 
+  instanceSelector:
+    matchLabels:
+      dashboards: grafana-workshop
+  interval: 1m
+  folderRef: workshop
+  rules:
+  - title: Failed Http Requests
+    condition: C
+    execErrState: Error
+    uid: eeb9687c-41d8-4592-b7cb-9d8fb65b9372
+    noDataState: NoData
+    for: 1m0s
+    data:
+    - refId: A
+      datasourceUid: 74043600-568f-4d85-9e8a-c1d99bfb3109
+      relativeTimeRange:
+        from: 600
+        to: 0
+      model:
+        editorMode: code
+        expr: increase(http_server_requests_seconds_count{status!="200"}[5m])
+        hide: false
+        intervalMs: 1000
+        legendFormat: __auto
+        maxDataPoints: 43200
+        range: true
+        refId: A
+    - refId: B
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: __expr__
+      model:
+        conditions:
+            - evaluator:
+                params: []
+                type: gt
+              operator:
+                type: and
+              query:
+                params:
+                    - B
+              reducer:
+                params: []
+                type: last
+              type: query
+        datasource:
+            type: __expr__
+            uid: __expr__
+        expression: A
+        hide: false
+        intervalMs: 1000
+        maxDataPoints: 43200
+        reducer: last
+        refId: B
+        type: reduce
+    - refId: C
+      relativeTimeRange:
+        from: 600
+        to: 0
+      datasourceUid: __expr__
+      model:
+        conditions:
+            - evaluator:
+                params:
+                    - 0
+                type: gt
+              operator:
+                type: and
+              query:
+                params:
+                    - C
+              reducer:
+                params: []
+                type: last
+              type: query
+        datasource:
+            type: __expr__
+            uid: __expr__
+        expression: B
+        hide: false
+        intervalMs: 1000
+        maxDataPoints: 43200
+        refId: C
+        type: threshold

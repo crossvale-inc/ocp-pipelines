@@ -39,16 +39,43 @@ spec:
 
             ARGO_APP=$(params.applicationToDeploy)
             SOURCE_IMAGE=$(params.sourceImage)
+            TARGET_NAMESPACE=$(params.targetNamespace)
             SOURCE_IMAGE_TAG=$(params.sourceImageTag)
             SOURCE_IMAGE_NS=$(params.sourceNamespace)
 
             IMAGE_SHA=$(oc get imagestreamtag $SOURCE_IMAGE:$SOURCE_IMAGE_TAG -o jsonpath='{.image.metadata.name}' -n $SOURCE_IMAGE_NS) 
 
             echo "Deploying application based on image $SOURCE_IMAGE with tag $SOURCE_IMAGE_TAG that points to latest SHA $IMAGE_SHA using $ARGO_APP"
+            
+            oc get application $ARGO_APP -n openshift-gitops | grep helm
+              
+            IS_HELM=$?
 
-            oc patch application $ARGO_APP \
-            -p '{"operation": {"initiatedBy": {"username": "pipeline"},"sync": {"syncStrategy": null}},"spec":{ "source": {"helm": {"parameters": [{"name": "image.sha","value": "'$IMAGE_SHA'"}]}}}}' \
-            -n openshift-gitops --type=merge
+            oc get application $ARGO_APP -n openshift-gitops | grep kustomize
+
+            IS_KUSTOMIZE=$?
+
+            if [[ $IS_HELM -eq 0 ]]; then
+              
+              echo "Applying helm patch"
+
+              oc patch application $ARGO_APP -p '{"operation": {"initiatedBy": {"username": "pipeline"},"sync": {"syncStrategy": null}},"spec":{ "source": {"helm": {"parameters": [{"name": "image.sha","value": "'$IMAGE_SHA'"}]}}}}' -n openshift-gitops --type=merge
+
+            elif [[ $IS_KUSTOMIZE -eq 0 ]]; then
+              
+              echo "Applying kustomize patch"
+
+              oc patch application $ARGO_APP --type='json' -p='[{"op":"replace","path":"/spec/source/kustomize/images/0","value":"quarkus-container-image=image-registry.openshift-image-registry.svc:5000/'$TARGET_NAMESPACE'/'$SOURCE_IMAGE'@'$IMAGE_SHA'"}]' -n openshift-gitops
+
+              oc patch application $ARGO_APP -p '{"operation": {"initiatedBy": {"username": "pipeline"},"sync": {"syncStrategy": null}}}' -n openshift-gitops --type=merge
+
+            else
+
+              echo "Applying default patch"
+
+              oc patch application $ARGO_APP -p '{"operation": {"initiatedBy": {"username": "pipeline"},"sync": {"syncStrategy": null}}}' -n openshift-gitops --type=merge
+
+            fi
         - name: VERSION
           value: latest
       runAfter:
