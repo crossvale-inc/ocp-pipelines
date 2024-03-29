@@ -2,6 +2,6 @@
   path: /metadata/name
   value: order-service-kustomize
 - op: replace
-  path: /spec/selector/deployment
+  path: /spec/selector/app
   value: order-service-kustomize
 

@@ -7,6 +7,3 @@
 - op: replace
   path: /spec/template/metadata/labels/app
   value: order-service-kustomize
-- op: replace
-  path: /spec/template/metadata/labels/deployment
-  value: order-service-kustomize
