@@ -10,8 +10,8 @@ The configuration management is based on `Helm` and `Kustomize` while the monito
 
 The purpose of this Lab is to prepare the Openshift cluster for the exercises.
 
-> [!NOTE]
-> This lab is optional and must only be done by the instructor.
+<div class="markdown-alert markdown-alert-important" dir="auto"><p class="markdown-alert-title" dir="auto"><svg class="octicon octicon-report mr-2" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"></svg>Important</p><p dir="auto">This lab is optional and must only be done by the instructor.</p>
+</div>
 
 ## Lab 0.1 Install Openshift Pipelines Operator
 
@@ -31,7 +31,7 @@ UserName: <input type="text" id="username" name="name" />
 <button type="button" onClick="window.location.reload()">generate</button>
 
 <script>
-  
+
   var username= document.getElementById("username").value
   var gitRepo= document.getElementById("gitRepo").value
 
