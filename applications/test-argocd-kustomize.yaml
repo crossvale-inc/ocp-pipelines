@@ -9,8 +9,10 @@ spec:
   project: default
   source:
     kustomize:
+      images:
+      - quarkus-container-image=image-registry.openshift-image-registry.svc:5000/test/order-service:test
       namespace: test
     path: kustomize/overlays/order-service/environments/test
     repoURL: >-
-      git@github.com:crossvale-inc/ocp-pipelines.git
+      https://github.com/crossvale-inc/ocp-pipelines
     targetRevision: master
