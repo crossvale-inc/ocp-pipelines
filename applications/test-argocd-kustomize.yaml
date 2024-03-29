@@ -1,0 +1,16 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: test-argocd-kustomize
+spec:
+  destination:
+    namespace: test
+    server: 'https://kubernetes.default.svc'
+  project: default
+  source:
+    kustomize:
+      namespace: test
+    path: kustomize/overlays/order-service/environments/test
+    repoURL: >-
+      git@github.com:crossvale-inc/ocp-pipelines.git
+    targetRevision: master

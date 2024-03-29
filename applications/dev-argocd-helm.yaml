@@ -1,0 +1,17 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: dev-argocd-helm
+spec:
+  destination:
+    namespace: develop
+    server: 'https://kubernetes.default.svc'
+  project: default
+  source:
+    path: helm/quarkus-helm
+    repoURL: https://github.com/crossvale-inc/ocp-pipelines
+    targetRevision: master
+    helm:
+      releaseName: order-service-helm
+      valueFiles:
+      - /helm/dev-order-service-values.yaml

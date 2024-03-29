@@ -1,0 +1,58 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: deploy-to-dev
+spec:
+  params:
+    - description: Name of the image to be promoted
+      name: sourceImage
+      type: string
+    - description: Tag of the image to be promoted
+      name: sourceImageTag
+      type: string
+    - description: Name of the ArgoCD application to deploy
+      name: applicationToDeploy
+      type: string
+    - description: Build Namespace
+      name: buildNamespace
+      type: string
+      default: workshop
+    - description: Target Namespace
+      name: targetNamespace
+      type: string
+      default: develop
+  tasks:
+    - name: promote-image
+      params:
+        - name: SCRIPT
+          value: 'oc import-image $(params.sourceImage):dev --from=image-registry.openshift-image-registry.svc:5000/$(params.buildNamespace)/$(params.sourceImage):$(params.sourceImageTag) -n $(params.targetNamespace) --confirm'
+        - name: VERSION
+          value: latest
+      taskRef:
+        kind: ClusterTask
+        name: openshift-client
+    - name: deploy-application
+      params:
+        - name: SCRIPT
+          value: |-
+            #!/bin/sh
+
+            ARGO_APP=$(params.applicationToDeploy)
+            SOURCE_IMAGE=$(params.sourceImage)
+            SOURCE_IMAGE_TAG=$(params.sourceImageTag)
+            SOURCE_IMAGE_NS=$(params.buildNamespace)
+
+            IMAGE_SHA=$(oc get imagestreamtag $SOURCE_IMAGE:$SOURCE_IMAGE_TAG -o jsonpath='{.image.metadata.name}' -n $SOURCE_IMAGE_NS) 
+
+            echo "Deploying application based on image $SOURCE_IMAGE with tag $SOURCE_IMAGE_TAG that points to latest SHA $IMAGE_SHA using $ARGO_APP"
+
+            oc patch application $ARGO_APP \
+            -p '{"operation": {"initiatedBy": {"username": "pipeline"},"sync": {"syncStrategy": null}},"spec":{ "source": {"helm": {"parameters": [{"name": "image.sha","value": "'$IMAGE_SHA'"}]}}}}' \
+            -n openshift-gitops --type=merge
+        - name: VERSION
+          value: latest
+      runAfter:
+        - promote-image
+      taskRef:
+        kind: ClusterTask
+        name: openshift-client

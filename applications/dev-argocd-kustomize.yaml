@@ -1,0 +1,16 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: dev-argocd-kustomize
+spec:
+  destination:
+    namespace: develop
+    server: 'https://kubernetes.default.svc'
+  project: default
+  source:
+    kustomize:
+      namespace: develop
+    path: kustomize/overlays/order-service/environments/dev
+    repoURL: >-
+      https://github.com/crossvale-inc/ocp-pipelines
+    targetRevision: master
