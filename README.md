@@ -12,3 +12,18 @@ The purpose of this Lab is to prepare the Openshift cluster for the exercises.
 
 > [!NOTE]
 > This lab is optional and must only be done by the instructor.
+
+## Lab 0.1 Install Openshift Pipelines Operator
+
+## Lab 0.2 Install Openshift GitOps Operator
+
+## Lab 0.3 Install Grafana Operator
+
+## Lab 0.4 Configure Service Account Permissions
+
+# Lab 1
+
+UserName <input type="text" id="name" name="name"/>
+
+<h1>{props.pageContext.name}</h1>
+  
