@@ -17,41 +17,23 @@ spec:
       admin_password: secret
 ---
 apiVersion: grafana.integreatly.org/v1beta1
-kind: GrafanaDashboard
+kind: GrafanaDatasource
 metadata:
-  name: grafanadashboard-sample
+  name: prometheus-grafanadatasource-workshop
 spec:
-  resyncPeriod: 30s
+  datasource:
+    access: proxy
+    editable: true
+    isDefault: true
+    jsonData:
+      httpHeaderName1: Authorization
+      timeInterval: 5s
+      tlsSkipVerify: true
+    name: Prometheus
+    secureJsonData:
+      httpHeaderValue1: 'Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6Ii00VjAzTHRUaV9YSzRvaEU5N2lvMTRSNG91b2Q5eWxya3ZCdVgxWjJuajgifQ.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJ3b3Jrc2hvcCIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VjcmV0Lm5hbWUiOiJtb25pdG9yaW5nLWRhdGFzb3VyY2UtdG9rZW4tNmxmNnAiLCJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhY2NvdW50L3NlcnZpY2UtYWNjb3VudC5uYW1lIjoibW9uaXRvcmluZy1kYXRhc291cmNlIiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZXJ2aWNlLWFjY291bnQudWlkIjoiMTBmYTI3MjEtMjQ4YS00ZTgyLThjZWQtMDRlMTBlMTA4YWM0Iiwic3ViIjoic3lzdGVtOnNlcnZpY2VhY2NvdW50OndvcmtzaG9wOm1vbml0b3JpbmctZGF0YXNvdXJjZSJ9.rVpiWukQgR5ntpoTl7MUftmTgk7fnbyVA_Pju0eBHPsQndewd7xepiiNzHQZ0_gb8Yduts0t-3ycdvIz5njl5DH2onyFcyxw6W0Ph5n1a06LpurSX4b71DNAIrfWquyPY7s6zuRlErSfTMMJGiZ--9438V1yqoAUX-c2B7wzvR44OeYSk0aDFj8slCvsIk-rOewx13diCjoviqIw1j3xTxrvBZlP3IVH4CkUluAO_mwnPQfXqiDfFvGakW3A0PWCuxqJZ6SkPeQXYjUsssG1bsl1-jG3453AS0FsTmAuCzr2SIK-w77m_83-CBjul8wC4m-Vo1AcQRWkOZ1I-QPGfl3-wf14HYF3KgTScCGRt9JzHqjoCAd0BBug-gfSPTfgYncBR-Ddasq-sqoQU6ncyyBBehEEnduxY6izRmGba_xc6z4JEFzCEKuY6aOm1biGTeoo2qoWbWCO2Qvj3ZqUXlk9J0xvVYfaMFZp-AnB8CojIJHvhu8VkiLsdfBXyCyDwqWZ2n8xdxBCTeun6LCgEmIFCvLDE_baEBBIWulbuKvB2v78WzK9zpyaP7Qh-DKRAfT12K68cIrwKoxML-D__PGGB666Z7bb9IonmWWwwMSs55PWoA2tQleZkiZl6pTe5nn0vpZrYngZ_ZQPEi0MkMMGzyXBIWrtgYqvi_oRw6Y'
+    type: prometheus
+    url: 'https://thanos-querier.openshift-monitoring.svc.cluster.local:9091'
   instanceSelector:
     matchLabels:
-      dashboards: grafana-workshop
-  json: >
-    {
-      "id": null,
-      "title": "Simple Dashboard",
-      "tags": [],
-      "style": "dark",
-      "timezone": "browser",
-      "editable": true,
-      "hideControls": false,
-      "graphTooltip": 1,
-      "panels": [],
-      "time": {
-        "from": "now-6h",
-        "to": "now"
-      },
-      "timepicker": {
-        "time_options": [],
-        "refresh_intervals": []
-      },
-      "templating": {
-        "list": []
-      },
-      "annotations": {
-        "list": []
-      },
-      "refresh": "5s",
-      "schemaVersion": 17,
-      "version": 0,
-      "links": []
-    }
+      dashboard: grafana-workshop
