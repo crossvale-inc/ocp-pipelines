@@ -1,9 +1,3 @@
-<style>
-.code-block {
-    background-color: grey
-  }
-</style>
-
 # XV OCP Pipelines Workshop
 
 The purpose of this workshop is to provide an overview on how to build, deploy and monitor applications running in an Openshift cluster.
@@ -29,12 +23,17 @@ The purpose of this Lab is to prepare the Openshift cluster for the exercises.
 
 # Lab 1
 
-Set input:
+Set your personal details for the script:
 
-UserName <input type="text" id="name" name="name" onChange="window.location.reload()"/>
+Git Repo: <input type="text" id="gitRepo" name="gitRepo" value="https://github.com/crossvale-inc/ocp-pipelines"/>
+
+UserName: <input type="text" id="username" name="name" />
+<button type="button" onClick="window.location.reload()">generate</button>
 
 <script>
-  var username= document.getElementById("name").value
+  
+  var username= document.getElementById("username").value
+  var gitRepo= document.getElementById("gitRepo").value
 
   if (username == "") {
     username = "user"
@@ -43,6 +42,11 @@ UserName <input type="text" id="name" name="name" onChange="window.location.relo
   var devNamespace = username + "_development"
 
 </script>
+
+Clone the repository in your workspace:
+
+<div class="highlight"><pre>git clone <script>document.write(gitRepo)</script></pre>
+</div>
 
 Create your develop and test projects:
 
