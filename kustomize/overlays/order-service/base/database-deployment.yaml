@@ -71,16 +71,3 @@ spec:
       volumes:
       - emptyDir: {}
         name: orders-data
-  test: false
-  triggers:
-  - imageChangeParams:
-      automatic: true
-      containerNames:
-      - postgresql
-      from:
-        kind: ImageStreamTag
-        name: postgresql:10-el8
-        namespace: openshift
-      lastTriggeredImage: image-registry.openshift-image-registry.svc:5000/openshift/postgresql@sha256:19aec763de6493191d0ef4da0022bf02d2b687182632df9957366025f2ccc15a
-    type: ImageChange
-  - type: ConfigChange
