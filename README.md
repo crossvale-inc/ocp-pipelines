@@ -1503,4 +1503,6 @@ And since the problem will still be there as the metric evaluated is the maximum
 
 ![GrafanaFailedHttpAlertResponseTimeFiring](images/grafana-failed-http-alert-responsetime-firing.png)
 
-If the evaluation period is passed, and the metrics don't match, the alerts will be cleaned from the dashboard but is is possible to check the response *HTTP* status code over time as shown in the dashboards panel.
+If the evaluation period is passed, and the metrics don't match, the alerts will be cleaned from the dashboard but is is possible to check the response *HTTP* status code over time as shown in the dashboards panel:
+
+![GrafanaNoAlertsAfter](images/grafana-noalerts-firing-after.png)
