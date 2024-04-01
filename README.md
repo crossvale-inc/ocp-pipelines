@@ -898,7 +898,7 @@ spec:
     repoURL: >-
       <script>document.write(gitRepo)</script>
     targetRevision: <script>document.write(gitBranch)</script>
-</div>
+</pre></div>
 
 Run the `deploy-to-dev` pipeline but this time select the kustomize `ArgoCD` application:
 
