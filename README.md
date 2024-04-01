@@ -158,6 +158,21 @@ Install the grafana operator in the created project:
 
 Click `Install`, and wait until the operator is installed.
 
+### Lab 0.4 Enable User Workload Monitoring
+
+Enable user workload monitoring so it is possible to collect metrics from application containers:
+
+```
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cluster-monitoring-config
+  namespace: openshift-monitoring
+data:
+  config.yaml: |
+    enableUserWorkload: true
+```
+
 ## Generate Your Own Script
 
 Set your personal details for the script:
@@ -861,5 +876,563 @@ And wait until `ArgoCD` heals the application by recreating the deployment.
 # Monitoring Labs
 
 ## Lab 1 Monitor an Application
+
+Deploy the `order-service` application in the development namespace but this time use the kustomize `ArgoCD` application instead of the `Helm` application. Create the `ArgoCD` application:
+
+<div class="highlight"><pre>
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: dev-argocd-kustomize-<script>document.write(username)</script>
+spec:
+  destination:
+    namespace: <script>document.write(devNamespace)</script>
+    server: 'https://kubernetes.default.svc'
+  project: default
+  source:
+    kustomize:
+      images:
+      - quarkus-container-image=<script>document.write(imageRegistry)</script>/<script>document.write(devNamespace)</script>/order-service:dev
+      namespace: <script>document.write(devNamespace)</script>
+    path: kustomize/overlays/order-service/environments/dev
+    repoURL: >-
+      <script>document.write(gitRepo)</script>
+    targetRevision: <script>document.write(gitBranch)</script>
+</div>
+
+Run the `deploy-to-dev` pipeline but this time select the kustomize `ArgoCD` application:
+
+![DeployToDevKustomize](images/deploy-to-dev-kustomize.png)
+
+Wait until the `ArgoCD` application is synchronized.
+
+It is possible to check the application logs from the Openshift console.
+
+In the **Developer** view, click on **Topology** and two deployments should be shown. Click on the named: **orders-service-kustomize** and then on the pod and is shown:
+
+![DevViewTopologyDeployments](images/dev-topology-view-deployments-edit.png)
+
+In the `Pod` view select the **Logs** tab to view the pod logs:
+
+![DevPodTabs](images/pod-view-tabs-edit.png)
+
+It is also possible to check the deployment logs by executing the following command:
+
+<div class="highlight"><pre>
+oc logs -f deployment/order-service-kustomize -n <script>document.write(devNamespace)</script>
+</pre></div>
+
+It is also possible to check the pod logs using the same command:
+
+<div class="markdown-alert markdown-alert-note" dir="auto"><p class="markdown-alert-title" dir="auto"><svg class="octicon octicon-info mr-2" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-6.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM6.5 7.75A.75.75 0 0 1 7.25 7h1a.75.75 0 0 1 .75.75v2.75h.25a.75.75 0 0 1 0 1.5h-2a.75.75 0 0 1 0-1.5h.25v-2h-.25a.75.75 0 0 1-.75-.75ZM8 6a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"></path></svg>Note</p>
+  <p dir="auto">Replace the placeholder {{podname}} by your generated pod name.</p>
+</div>
+
+<div class="highlight"><pre>
+oc logs -f {{podname}} -n <script>document.write(devNamespace)</script>
+</pre></div>
+
+Logs are important to check an application status on the cluster, but it is also possible to configure the Openshift cluster to store application related metrics.
+
+In the Pod view, if you select the **Metrics** tab, some metrics information will be shown:
+
+![DevPodTabsMetrics](images/pod-view-tabs-metrics.png)
+
+This metrics are shown at a pod label, that means that the memory or cpu shown in the Pod metrics are the addition of the consumption of all the containers running within that Pod.
+
+These metrics are configured at a cluster level are report information about the container overall resource consumption, but it is also possible to expose custom application metrics to be collected by the cluster metrics component.
+
+The application `order-service` is configured to expose some metrics that can be collected. Go into the application pod terminal and execute the following command:
+
+```
+curl http://localhost:8080/q/metrics
+```
+
+These shows all the metrics that the application is reporting at this moment. Before continuing, execute the following command from within the application pod terminal (this will execute 5 sequential command to the application exposed operation):
+
+```
+for i in {1..5}; do sleep 1 && curl http://localhost:8080/entity/orders; done
+```
+
+Since there has been some requests executed in the application, it is possible to check the following metric:
+
+```
+curl http://localhost:8080/q/metrics | grep http_server_requests_seconds_count
+```
+
+This will show a summary of all the *HTTP* requests processed by that container. For example:
+
+```
+$ curl http://localhost:8080/q/metrics | grep http_server_requests_seconds_count
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100 16344  100 16344    0     0  1330k      0 --:--:-- --:--:-- --:--:-- 1330k
+http_server_requests_seconds_count{method="GET",outcome="CLIENT_ERROR",status="404",uri="NOT_FOUND"} 1.0
+http_server_requests_seconds_count{method="GET",outcome="SUCCESS",status="200",uri="/entity/orders"} 6.0
+```
+
+To configure the montoring component in the cluster to collect these applications metrics, create the following object in the <script>document.write(devNamespace)</script>
+
+<div class="highlight"><pre>
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: order-service-monitor-<script>document.write(username)</script>
+spec:
+  endpoints:
+    - interval: 30s
+      path: /q/metrics
+      port: 8080-tcp
+      scheme: http
+  jobLabel: name
+  namespaceSelector:
+    matchNames:
+      - <script>document.write(devNamespace)</script>
+  selector:
+    matchLabels:
+      metrics: quarkus-metrics
+</pre></div>
+
+After the service monitor is configured, it should be possible to check the metric value in the **Observe** menu of the Openshift Console:
+
+![OcpConsoleMetrics](images/ocp-console-metrics.png)
+
+Since now the metrics are configured to be collected by the cluster, it is possible to configure a custom metrics Dashboards that show the application metrics that are relevant. 
+
+<div class="markdown-alert markdown-alert-note" dir="auto"><p class="markdown-alert-title" dir="auto"><svg class="octicon octicon-info mr-2" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-6.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM6.5 7.75A.75.75 0 0 1 7.25 7h1a.75.75 0 0 1 .75.75v2.75h.25a.75.75 0 0 1 0 1.5h-2a.75.75 0 0 1 0-1.5h.25v-2h-.25a.75.75 0 0 1-.75-.75ZM8 6a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"></path></svg>Note</p>
+  <p dir="auto">Mind that all metrics that are collected by the metrics component will be available, not only the application metrics.</p>
+</div>
+
+First, deploy your own personal `Grafana` instance in the `devspaces` namespace by importing the following yaml:
+
+<div class="highlight"><pre>
+apiVersion: grafana.integreatly.org/v1beta1
+kind: Grafana
+metadata:
+  name: grafana-<script>document.write(username)</script>
+  labels:
+    dashboards: grafana-<script>document.write(username)</script>
+spec:
+  route:
+    spec: {}
+  config:
+    log:
+      mode: "console"
+    auth:
+      disable_login_form: "false"
+    security:
+      admin_user: root
+      admin_password: secret
+</pre></div>
+
+This will create a new `Grafana` deployment in your personal namespace. Wait until the pod is ready to access the server. 
+
+To check the `Grafana` endpoint execute:
+
+<div class="highlight"><pre>oc get route grafana-<script>document.write(username)</script>-route -n <script>document.write(workNamespace)</script>
+</pre></div>
+
+Login to `Grafana` entering `root` as the user and `secret` as the password.
+
+The first step to configure `Grafana` is to integrate the server with the datasource that contains the metrics of the cluster.
+
+Before continuing, collect the token of the service account linked to grafana since it will be needed when configuring the Datasource.
+
+To be the token, execute the following command:
+
+<div class="highlight"><pre>oc get secret | grep grafana-<script>document.write(username)</script>-sa-token | awk '{print "oc get secret "$1" -n <script>document.write(workNamespace)</script> -o jsonpath={.data.token}"}' | bash | base64 -d
+</pre></div>
+
+To do this, click on the **Connections** section localted in the hamburguer menu in the upper left corner of the screen:
+
+![GrafanaMenu](images/grafana-menu-edit.png)
+
+<div class="markdown-alert markdown-alert-note" dir="auto"><p class="markdown-alert-title" dir="auto"><svg class="octicon octicon-info mr-2" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-6.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM6.5 7.75A.75.75 0 0 1 7.25 7h1a.75.75 0 0 1 .75.75v2.75h.25a.75.75 0 0 1 0 1.5h-2a.75.75 0 0 1 0-1.5h.25v-2h-.25a.75.75 0 0 1-.75-.75ZM8 6a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"></path></svg>Note</p>
+  <p dir="auto">Before creating the datasource, ensure that the service account has the expected permission to query the metrics endpoint.
+    <br>Execute the commands: <pre>oc adm policy add-cluster-role-to-user cluster-monitoring-view system:serviceaccount:<script>document.write(workNamespace)</script>:grafana-<script>document.write(username)</script>-sa -n <script>document.write(workNamespace)</script></pre> To add the required permissions</p>
+</div>
+
+
+Then clik on **Your Connections** and **Add data source**.
+
+Select **Prometheus** as the datasource type and create it with the following values:
+<div class="markdown-alert markdown-alert-important" dir="auto"><p class="markdown-alert-title" dir="auto"><svg class="octicon octicon-report mr-2" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="M0 1.75C0 .784.784 0 1.75 0h12.5C15.216 0 16 .784 16 1.75v9.5A1.75 1.75 0 0 1 14.25 13H8.06l-2.573 2.573A1.458 1.458 0 0 1 3 14.543V13H1.75A1.75 1.75 0 0 1 0 11.25Zm1.75-.25a.25.25 0 0 0-.25.25v9.5c0 .138.112.25.25.25h2a.75.75 0 0 1 .75.75v2.19l2.72-2.72a.749.749 0 0 1 .53-.22h6.5a.25.25 0 0 0 .25-.25v-9.5a.25.25 0 0 0-.25-.25Zm7 2.25v2.5a.75.75 0 0 1-1.5 0v-2.5a.75.75 0 0 1 1.5 0ZM9 9a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"></path></svg>Important</p>
+  <p dir="auto">Replace ${GRAFANA_SA_TOKEN_OBTAINED_PREVIOUSLY} with the previously obtained token.</p>
+</div>
+
+* HTTP
+    * URL: https://thanos-querier.openshift-monitoring.svc.cluster.local:9091
+* Auth
+    * Skip TLS Verify: true
+* Custom HTTP Headers
+    * Add a Header:
+        * Name: Authorization
+        * Value: Bearer ${GRAFANA_SA_TOKEN_OBTAINED_PREVIOUSLY}
+
+The configuration of the datasource should look like the following:
+
+![GrafanaPrometheusDatasource](images/grafana-prometheus-datasource.png)
+
+Go to the bottom of the page and click `Save & Test` to create the datasource.
+
+After the datasource is created, it is possible to create a dashboard to check the metrics that are related to the application. 
+
+Create the following yaml in the <script>document.write(workNamespace)</script>:
+
+<div class="highlight"><pre>
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDashboard
+metadata:
+  labels:
+    app: grafana-<script>document.write(username)</script>
+  name: metrics-<script>document.write(username)</script>
+spec:
+  datasources:
+    - datasourceName: Prometheus
+      inputName: DS_PROMETHEUS
+  instanceSelector:
+    matchLabels:
+      dashboards: grafana-<script>document.write(username)</script> 
+  json: |
+    {
+      "__inputs": [
+        {
+          "name": "DS_PROMETHEUS",
+          "label": "Prometheus",
+          "description": "",
+          "type": "datasource",
+          "pluginId": "prometheus",
+          "pluginName": "Prometheus"
+        }
+      ],
+      "__elements": {},
+      "__requires": [
+        {
+          "type": "panel",
+          "id": "alertlist",
+          "name": "Alert list",
+          "version": ""
+        },
+        {
+          "type": "grafana",
+          "id": "grafana",
+          "name": "Grafana",
+          "version": "9.1.6"
+        },
+        {
+          "type": "panel",
+          "id": "graph",
+          "name": "Graph (old)",
+          "version": ""
+        },
+        {
+          "type": "datasource",
+          "id": "prometheus",
+          "name": "Prometheus",
+          "version": "1.0.0"
+        },
+        {
+          "type": "panel",
+          "id": "stat",
+          "name": "Stat",
+          "version": ""
+        }
+      ],
+      "annotations": {
+        "list": [
+          {
+            "builtIn": 1,
+            "datasource": {
+              "type": "grafana",
+              "uid": "-- Grafana --"
+            },
+            "enable": true,
+            "hide": true,
+            "iconColor": "rgba(0, 211, 255, 1)",
+            "name": "Annotations & Alerts",
+            "type": "dashboard"
+          }
+        ]
+      },
+      "editable": true,
+      "fiscalYearStartMonth": 0,
+      "graphTooltip": 0,
+      "id": 10,
+      "links": [],
+      "liveNow": false,
+      "panels": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 6,
+            "x": 0,
+            "y": 0
+          },
+          "id": 3,
+          "options": {
+            "alertInstanceLabelFilter": "",
+            "alertName": "Failed Http Request",
+            "dashboardAlerts": false,
+            "groupBy": [],
+            "groupMode": "default",
+            "maxItems": 20,
+            "sortOrder": 1,
+            "stateFilter": {
+              "error": true,
+              "firing": true,
+              "noData": false,
+              "normal": false,
+              "pending": true
+            },
+            "viewMode": "list"
+          },
+          "title": "Http Alert",
+          "type": "alertlist"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                }
+              },
+              "mappings": []
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "500"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "red",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 6,
+            "x": 6,
+            "y": 0
+          },
+          "id": 1,
+          "options": {
+            "displayLabels": [
+              "percent"
+            ],
+            "legend": {
+              "displayMode": "list",
+              "placement": "right",
+              "showLegend": true,
+              "values": []
+            },
+            "pieType": "pie",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "tooltip": {
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "sum(http_server_requests_seconds_count{namespace=\"<script>document.write(devNamespace)</script>\"}) by (status)",
+              "instant": false,
+              "legendFormat": "__auto",
+              "range": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Total Http Request Response Status",
+          "type": "piechart"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 23,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": 3600000,
+                "stacking": {
+                  "group": "A",
+                  "mode": "percent"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "noValue": "0",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "500"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "red",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "200"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "green",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 0
+          },
+          "id": 2,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
+              "editorMode": "code",
+              "expr": "sum(http_server_requests_seconds_count{namespace=\"<script>document.write(devNamespace)</script>\"}) by (status)",
+              "legendFormat": "__auto",
+              "range": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Http Responses",
+          "type": "timeseries"
+        }
+      ],
+      "refresh": "5s",
+      "schemaVersion": 38,
+      "style": "dark",
+      "tags": [],
+      "templating": {
+        "list": []
+      },
+      "time": {
+        "from": "now-3h",
+        "to": "now"
+      },
+      "timepicker": {},
+      "timezone": "",
+      "title": "Http Request Overview",
+      "uid": "a61683c7-e9ab-4dfe-bb2e-943f0addfa0f",
+      "version": 2,
+      "weekStart": ""
+    }
+</pre></div>
+
+After the dashboard is successfully created, click on the dasboards option in the hamburgue menu on the upper left corner of the `Grafana` UI:
+
+![GrafanaMenuDashboards](images/grafana-menu-edit-dashboard.png)
+
+Then click on your <script>document.write(workNamespace)</script> to expand the dashboards section and click on the created dashboard:
+
+![GrafanaMenuDashboardsSelection](images/grafana-dashboards-selection.png)
+
+You should be able to see the application metrics:
+
+![GrafanaHttpMetrics](images/grafana-http-metrics-overview.png)
 
 ## Lab 2 Configuring Alerts Based on Application Metrics
