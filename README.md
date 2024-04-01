@@ -81,6 +81,9 @@
 
 
 </style>
+<script>
+
+</script>
 
 <div class="header" id="xvHeader">
 <a href="https://crossvale.com">
@@ -180,23 +183,64 @@ Set your personal details for the script:
 Image Registry: <input type="text" id="imageRegistry" name="imageRegistry" value="image-registry.openshift-image-registry.svc:5000"/> 
 
 Git Repo: <input type="text" id="gitRepo" name="gitRepo" value="https://github.com/crossvale-inc/ocp-pipelines"/>
-
 Default Git Branch: <input type="text" id="gitBranch" name="gitBranch" value="main"/>
 
 UserName: <input type="text" id="username" name="name" value="user"/>
 
-<input type="button" value="generate" onClick="window.location.reload()"/>
+<input type="button" value="generate" onClick="generateForm()"/>
 
 <script>
 
-  var username= document.getElementById("username").value
-  var gitRepo= document.getElementById("gitRepo").value
-  var gitBranch= document.getElementById("gitBranch").value
+  // Run on page load
+  window.onload = function() {
+    if (localStorage.getItem('username') != null) {
+      document.getElementById("username").value = localStorage.getItem('username')
+    }
 
-  var gitConfigRepo= document.getElementById("gitRepo").value
+    if (localStorage.getItem('gitRepo') != null) {
+      document.getElementById("gitRepo").value = localStorage.getItem('gitRepo')
+    }
 
-  var imageRegistry= document.getElementById("imageRegistry").value
+    if (localStorage.getItem('gitBranch') != null) {
+      document.getElementById("gitBranch").value = localStorage.getItem('gitBranch')
+    }
 
+    if (localStorage.getItem('imageRegistry') != null) {
+      document.getElementById("imageRegistry").value = localStorage.getItem('imageRegistry')
+    }
+
+  }
+
+  if (localStorage.getItem('username') != null) {
+    var username = localStorage.getItem('username')
+  } else {
+    var username = document.getElementById("username").value
+  }
+
+  if (localStorage.getItem('gitRepo') != null) {
+    var gitRepo = localStorage.getItem('gitRepo')
+  } else {
+    var gitRepo= document.getElementById("gitRepo").value
+  }
+
+  if (localStorage.getItem('gitBranch') != null) {
+    var gitBranch = localStorage.getItem('gitBranch')
+  } else {  
+    var gitBranch= document.getElementById("gitBranch").value
+  }
+
+  if (localStorage.getItem('gitConfigRepo') != null) {
+    var gitConfigRepo = localStorage.getItem('gitConfigRepo')
+  } else {
+    var gitConfigRepo= document.getElementById("gitRepo").value
+  }
+
+  if (localStorage.getItem('imageRegistry') != null) {
+    var imageRegistry = localStorage.getItem('imageRegistry')
+  } else {
+    var imageRegistry= document.getElementById("imageRegistry").value
+  }
+  
   var workNamespace = username + "-devspaces"
   var devNamespace = username + "-development"
   var testNamespace = username + "-test"
@@ -218,6 +262,17 @@ UserName: <input type="text" id="username" name="name" value="user"/>
       header.classList.remove("sticky");
     }
   } 
+
+  function generateForm() {
+
+    localStorage.setItem('username', document.getElementById("username").value)
+    localStorage.setItem('gitRepo', document.getElementById("gitRepo").value)
+    localStorage.setItem('gitBranch', document.getElementById("gitBranch").value)
+    localStorage.setItem('gitConfigRepo', document.getElementById("gitRepo").value)
+    localStorage.setItem('imageRegistry', document.getElementById("imageRegistry").value)
+    
+    window.location.reload()
+  }
 </script>
 
 ## Student Project Preparation
