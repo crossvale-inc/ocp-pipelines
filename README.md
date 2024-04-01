@@ -1436,3 +1436,71 @@ You should be able to see the application metrics:
 ![GrafanaHttpMetrics](images/grafana-http-metrics-overview.png)
 
 ## Lab 2 Configuring Alerts Based on Application Metrics
+
+It is possible configure alerting in `Grafana` by adding some alert rules based on the metrics collected by the cluster.
+
+To do this, select the **Alerting** section on the hamburguer menu on the upper left corner of the `Grafana` UI and click on **Alert Rules**.
+
+Click on **Create alert rule**:
+
+![GrafanaAlertMenu](images/grafana-alerts-menu.png)
+
+And create an alert named **Failed Http Request** with the following configuration:
+
+<div class="markdown-alert markdown-alert-note" dir="auto"><p class="markdown-alert-title" dir="auto"><svg class="octicon octicon-info mr-2" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-6.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM6.5 7.75A.75.75 0 0 1 7.25 7h1a.75.75 0 0 1 .75.75v2.75h.25a.75.75 0 0 1 0 1.5h-2a.75.75 0 0 1 0-1.5h.25v-2h-.25a.75.75 0 0 1-.75-.75ZM8 6a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"></path></svg>Note</p>
+  <p dir="auto">Use <script>document.write(devNamespace)</script> as the value of the namespace filter in the prometheus query.</p>
+</div>
+
+![GrafanaFailedHttpAlert](images/grafana-failed-http-alert.png)
+
+Click on **Save and exit** to create the alert. 
+
+This alert, is evaluated each minute by responses that have a *HTTP* status code that is not **200**, to fire the alert execute some invalid request in the application pod:
+
+```
+for i in {1..5}; do sleep 1 && curl http://localhost:8080/entity/notfound; done
+```
+
+And wait for the alert to be **Pending** which means that the alert rule has been matched:
+
+![GrafanaFailedHttpAlertPending](images/grafana-failed-http-alert-pending.png)
+
+If the alert is matched two times (since the evaluation behavior is configured to **2m**) it will be set to the status **Firing**:
+
+![GrafanaFailedHttpAlertFiring](images/grafana-failed-http-alert-firing.png)
+
+It is possible to use other metrics for the `Grafana` alert as well as for the dashboards but it is not necessary for the alert metric to be shown in the dashboard to be configured.
+
+Create a new alert based on the response time of the application service to be fired if the response time of the service is bigger than one second.
+
+To do this, configure an alert named **Failed Http Request Response Time** with the following configuration:
+
+<div class="markdown-alert markdown-alert-note" dir="auto"><p class="markdown-alert-title" dir="auto"><svg class="octicon octicon-info mr-2" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-6.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM6.5 7.75A.75.75 0 0 1 7.25 7h1a.75.75 0 0 1 .75.75v2.75h.25a.75.75 0 0 1 0 1.5h-2a.75.75 0 0 1 0-1.5h.25v-2h-.25a.75.75 0 0 1-.75-.75ZM8 6a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"></path></svg>Note</p>
+  <p dir="auto">Use <script>document.write(devNamespace)</script> as the value of the namespace filter in the prometheus query.</p>
+</div>
+
+![GrafanaFailedHttpAlertResponseTime](images/grafana-failed-http-alert-response-time.png)
+
+Click on **Save and exit** to create the alert. 
+
+To simulate a slow response time, delete the deployment for the orders database:
+
+<div class="highlight"><pre>
+oc delete deployment orders -n <script>document.write(devNamespace)</script>
+</pre></div>
+
+And execute a valid to the orders endpoint, since there is no database it will take some time to response with a failed status:
+
+```
+curl http://localhost:8080/entity/orders
+```
+
+When the alert is evaluated, it will be shown as **Pending** in the dashboard:
+
+![GrafanaFailedHttpAlertResponseTimePending](images/grafana-failed-http-alert-responsetime-pending.png)
+
+And since the problem will still be there as the metric evaluated is the maximum response time, it will be set to **Firing** state the next time the alert metric is checked by `Grafana`:
+
+![GrafanaFailedHttpAlertResponseTimeFiring](images/grafana-failed-http-alert-responsetime-firing.png)
+
+If the evaluation period is passed, and the metrics don't match, the alerts will be cleaned from the dashboard but is is possible to check the response *HTTP* status code over time as shown in the dashboards panel.
