@@ -977,7 +977,7 @@ It is also possible to check the deployment logs by executing the following comm
 oc logs -f deployment/order-service-kustomize -n <script>document.write(devNamespace)</script>
 </pre></div>
 
-It is also possible to check the pod logs using the same command:
+You can also the container logs directly using the command:
 
 <div class="markdown-alert markdown-alert-note" dir="auto"><p class="markdown-alert-title" dir="auto"><svg class="octicon octicon-info mr-2" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-6.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM6.5 7.75A.75.75 0 0 1 7.25 7h1a.75.75 0 0 1 .75.75v2.75h.25a.75.75 0 0 1 0 1.5h-2a.75.75 0 0 1 0-1.5h.25v-2h-.25a.75.75 0 0 1-.75-.75ZM8 6a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"></path></svg>Note</p>
   <p dir="auto">Replace the placeholder my_podname by your generated pod name.</p>
@@ -1558,6 +1558,681 @@ And since the problem will still be there as the metric evaluated is the maximum
 
 ![GrafanaFailedHttpAlertResponseTimeFiring](images/grafana-failed-http-alert-responsetime-firing.png)
 
-If the evaluation period is passed, and the metrics don't match, the alerts will be cleaned from the dashboard but is is possible to check the response *HTTP* status code over time as shown in the dashboards panel:
+If the evaluation period has passed, and the alerting rule is not matched anymore, the alerts will be cleaned from the dashboard but it is possible to check the response *HTTP* status code over time as shown in the dashboards panel:
 
 ![GrafanaNoAlertsAfter](images/grafana-noalerts-firing-after.png)
+
+## Lab 3 Monitoring Application Resources
+
+It is also possible to configure grafana to monitor the resource consumption of the application container, as well as to show other information related to the application resource consumption in real-time.
+
+Before continuing, add some resources to the quarkus kustomize template located in the cloned repository.
+
+Create a new git branch:
+
+<div class="highlight"><pre>git checkout -b monitor-lab/<script>document.write(username)</script></pre></div>
+
+And push the changes to git
+
+<div class="highlight"><pre>git push --set-upstream origin monitor-lab/<script>document.write(username)</script></pre>
+</div>
+
+Modify your `ArgoCD` application to pull from the new branch:
+
+<div class="highlight"><pre>
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: dev-argocd-kustomize-<script>document.write(username)</script>
+spec:
+  destination:
+    namespace: <script>document.write(devNamespace)</script>
+    server: 'https://kubernetes.default.svc'
+  project: default
+  source:
+    kustomize:
+      images:
+      - quarkus-container-image=<script>document.write(imageRegistry)</script>/<script>document.write(devNamespace)</script>/order-service:dev
+      namespace: <script>document.write(devNamespace)</script>
+    path: kustomize/overlays/order-service/environments/dev
+    repoURL: >-
+      <script>document.write(gitRepo)</script>
+    targetRevision: monitor-lab/<script>document.write(username)</script>
+</pre></div>
+
+Add some resource configuration to the kustomize application located in the path **kustomize/base-quarkys/deployment.yaml**. To do this replace the *containers* section with:
+
+```
+containers:
+  - image: quarkus-container-image
+    imagePullPolicy: Always
+    name: quarkus
+    ports:
+    - containerPort: 8080
+      protocol: TCP
+    terminationMessagePath: /dev/termination-log
+    terminationMessagePolicy: File
+    resources:
+      requests: 
+        cpu: 10m
+        memory: 100Mi
+      limits:
+        cpu: 50m
+        memory: 500Mi
+```
+
+Manually synchonize the `ArgoCD` application and validate that the changes are applied to the dev environment in the cluster. 
+
+To monitor resource consumption, create the following `Grafana` dashboard:
+
+<div class="highlight"><pre>apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDashboard
+metadata:
+  labels:
+    app: grafana-<script>document.write(username)</script>
+  name: appmetrics-<script>document.write(username)</script>
+spec:
+  datasources:
+    - datasourceName: Prometheus
+      inputName: DS_PROMETHEUS
+  instanceSelector:
+    matchLabels:
+      dashboards: grafana-<script>document.write(username)</script> 
+  json: |
+    {
+      "__inputs": [
+        {
+          "name": "DS_PROMETHEUS",
+          "label": "Prometheus",
+          "description": "",
+          "type": "datasource",
+          "pluginId": "prometheus",
+          "pluginName": "Prometheus"
+        }
+      ],
+      "__elements": {},
+      "__requires": [
+        {
+          "type": "panel",
+          "id": "alertlist",
+          "name": "Alert list",
+          "version": ""
+        },
+        {
+          "type": "grafana",
+          "id": "grafana",
+          "name": "Grafana",
+          "version": "9.1.6"
+        },
+        {
+          "type": "panel",
+          "id": "graph",
+          "name": "Graph (old)",
+          "version": ""
+        },
+        {
+          "type": "datasource",
+          "id": "prometheus",
+          "name": "Prometheus",
+          "version": "1.0.0"
+        },
+        {
+          "type": "panel",
+          "id": "stat",
+          "name": "Stat",
+          "version": ""
+        }
+      ],
+      "annotations": {
+        "list": [
+          {
+            "builtIn": 1,
+            "datasource": {
+              "type": "grafana",
+              "uid": "-- Grafana --"
+            },
+            "enable": true,
+            "hide": true,
+            "iconColor": "rgba(0, 211, 255, 1)",
+            "name": "Annotations & Alerts",
+            "type": "dashboard"
+          }
+        ]
+      },
+      "editable": true,
+      "fiscalYearStartMonth": 0,
+      "graphTooltip": 0,
+      "id": 3,
+      "links": [],
+      "liveNow": false,
+      "panels": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 6,
+            "x": 0,
+            "y": 0
+          },
+          "id": 1,
+          "options": {
+            "colorMode": "none",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "auto"
+          },
+          "pluginVersion": "9.5.17",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
+              "editorMode": "code",
+              "expr": "kube_deployment_spec_replicas{namespace=\"<script>document.write(devNamespace)</script>\",deployment=\"order-service-kustomize\"}",
+              "legendFormat": "__auto",
+              "range": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Number of Replicas",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 6,
+            "x": 6,
+            "y": 0
+          },
+          "id": 5,
+          "options": {
+            "colorMode": "none",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "textMode": "auto"
+          },
+          "pluginVersion": "9.5.17",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
+              "editorMode": "code",
+              "expr": "sum(http_server_requests_seconds_count{namespace=\"<script>document.write(devNamespace)</script>\", service=\"order-service-kustomize\"}) BY (service)",
+              "legendFormat": "__auto",
+              "range": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Number of requests",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 0,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 0
+          },
+          "id": 3,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
+              "editorMode": "code",
+              "expr": "http_server_requests_seconds_sum{namespace=\"<script>document.write(devNamespace)</script>\",container=\"quarkus\"}/http_server_requests_seconds_count{namespace=\"<script>document.write(devNamespace)</script>\",container=\"quarkus\"}",
+              "legendFormat": "__auto",
+              "range": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Average Response Time",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "axisSoftMin": 0,
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 0,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "decmbytes"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 8
+          },
+          "id": 2,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
+              "editorMode": "code",
+              "expr": "sum(container_memory_working_set_bytes{container='quarkus',namespace='<script>document.write(devNamespace)</script>'}) BY (pod, namespace)/1000000",
+              "legendFormat": "{{pod}}",
+              "range": true,
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
+              "editorMode": "code",
+              "expr": "sum(kube_pod_container_resource_requests{resource='memory',container='quarkus',namespace='<script>document.write(devNamespace)</script>'}) BY (pod, namespace)/1000000",
+              "hide": false,
+              "legendFormat": "{{pod}} request",
+              "range": true,
+              "refId": "B"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
+              "editorMode": "code",
+              "expr": "sum(kube_pod_container_resource_limits{resource='memory',container='quarkus',namespace='<script>document.write(devNamespace)</script>'}) BY (pod, namespace)/1000000",
+              "hide": false,
+              "legendFormat": "{{pod}} limit",
+              "range": true,
+              "refId": "C"
+            }
+          ],
+          "title": "Total Container Memory",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 0,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 8
+          },
+          "id": 4,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
+              "editorMode": "code",
+              "expr": "pod:container_cpu_usage:sum{pod=~\"order-service-kustomize.*\",namespace='<script>document.write(devNamespace)</script>'}",
+              "legendFormat": "{{pod}}",
+              "range": true,
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "af1dd5f7-2a6c-4de7-96b3-7000925646bc"
+              },
+              "editorMode": "code",
+              "expr": "sum(kube_pod_resource_request{resource='cpu',pod=~'order-service-kustomize.*',namespace='<script>document.write(devNamespace)</script>'}) BY (pod, namespace)",
+              "hide": false,
+              "legendFormat": "{{pod}} request",
+              "range": true,
+              "refId": "B"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${DS_PROMETHEUS}"
+              },
+              "editorMode": "code",
+              "expr": "sum(kube_pod_resource_limit{resource='cpu',pod=~'order-service-kustomize.*',namespace='<script>document.write(devNamespace)</script>'}) BY (pod, namespace)",
+              "hide": false,
+              "legendFormat": "{{pod}} limit",
+              "range": true,
+              "refId": "C"
+            }
+          ],
+          "title": "Total Container CPU",
+          "type": "timeseries"
+        }
+      ],
+      "refresh": "",
+      "schemaVersion": 38,
+      "style": "dark",
+      "tags": [],
+      "templating": {
+        "list": []
+      },
+      "time": {
+        "from": "now-6h",
+        "to": "now"
+      },
+      "timepicker": {},
+      "timezone": "",
+      "title": "Application Resource Overview",
+      "uid": "abd1f1dd-cb40-46a8-b9bf-ee6db10e7f59",
+      "version": 12,
+      "weekStart": ""
+    }
+</pre></div>
+
+Now, simulate some load. From the application **quarkus** container pod execute multiple requests:
+
+```
+time seq 1 1000 | xargs -n1 -P10 curl http://localhost:8080/entity/orders 2> /dev/null
+```
+
+Wait until the execution is finished and evaluate the elapsed time:
+
+```
+sh-4.4$ time seq 1 1000 | xargs -n1 -P20 curl http://localhost:8080/entity/orders 2> /dev/null
+....
+...
+real    3m59.628s
+user    0m4.137s
+sys     0m3.841
+```
+
+Check the metric consumption and response times of the application shown in the dashboard:
+
+![GrafanaResourceLowConfig](images/grafana-resource-lowconfig-consumption.png)
+
+It is clear that the cpu is getting closer to the limit which means that the application response time will be slower since it doesn't have enough CPU to correctly process the incoming requests.
+
+Now, increase the requests and limits in the kustomize template to:
+
+```
+requests: 
+  cpu: 100m
+  memory: 250Mi
+limits:
+  cpu: 500m
+  memory: 500Mi
+```
+
+Rescynchronize the `ArgoCD` application and wait for the new pod to be created.
+
+Execute the same test again:
+
+```
+time seq 1 1000 | xargs -n1 -P10 curl http://localhost:8080/entity/orders 2> /dev/null
+```
+
+Wait until the execution is finished and evaluate the elapsed time:
+
+```
+sh-4.4$ time seq 1 1000 | xargs -n1 -P20 curl http://localhost:8080/entity/orders 2> /dev/null
+....
+...
+real    0m30.233s
+user    0m5.482s
+sys     0m4.425s
+```
+
+Check the resource consumption dashboard now:
+
+![GrafanaResourceHighConfig](images/grafana-resource-higherconfig-consumption.png)
+
