@@ -925,11 +925,11 @@ oc logs -f deployment/order-service-kustomize -n <script>document.write(devNames
 It is also possible to check the pod logs using the same command:
 
 <div class="markdown-alert markdown-alert-note" dir="auto"><p class="markdown-alert-title" dir="auto"><svg class="octicon octicon-info mr-2" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-6.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM6.5 7.75A.75.75 0 0 1 7.25 7h1a.75.75 0 0 1 .75.75v2.75h.25a.75.75 0 0 1 0 1.5h-2a.75.75 0 0 1 0-1.5h.25v-2h-.25a.75.75 0 0 1-.75-.75ZM8 6a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"></path></svg>Note</p>
-  <p dir="auto">Replace the placeholder {{podname}} by your generated pod name.</p>
+  <p dir="auto">Replace the placeholder my_podname by your generated pod name.</p>
 </div>
 
 <div class="highlight"><pre>
-oc logs -f {{podname}} -n <script>document.write(devNamespace)</script>
+oc logs -f my_podname -n <script>document.write(devNamespace)</script>
 </pre></div>
 
 Logs are important to check an application status on the cluster, but it is also possible to configure the Openshift cluster to store application related metrics.
